@@ -1,22 +1,32 @@
 export default async function handler(req, res) {
-  const boomiUrl = "https://c01-deu.integrate-test.boomi.com/ws/simple/getLuccaLogin?user=leo.marchand@dalkiaelectrotechnics.fr";
+    if (req.method !== 'POST') {
+        return res.status(405).send('Méthode non autorisée');
+    }
 
-  const auth = Buffer.from("boomitest@dalkiaelectrotechnics-MK4UKY.KWC3QR:47c6ab20-838c-49fa-b148-9238b36f85ef").toString('base64');
+    const { UserName, PasswordNbChar } = req.body;
 
-  const response = await fetch(boomiUrl, {
-    method: "GET",
-    headers: {
-      Authorization: `Basic ${auth}`
-    },
-    redirect: 'follow'
-  });
+    const boomitestUser = 'boomitest@dalkiaelectrotechnics-MK4UKY.KWC3QR';
+    const boomitestPassword = '47c6ab20-838c-49fa-b148-9238b36f85ef';
 
-  // Redirige vers la réponse finale si 3xx, sinon affiche un message
-  if (response.redirected) {
-    res.writeHead(302, { Location: response.url });
-    res.end();
-  } else {
-    const text = await response.text();
-    res.status(response.status).send(text);
-  }
+    const authHeader = 'Basic ' + Buffer.from(`${boomitestUser}:${boomitestPassword}`).toString('base64');
+
+    try {
+        const response = await fetch('https://c01-deu.integrate-test.boomi.com/ws/simple/executeGetLuccaLogin', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Authorization': authHeader
+            },
+            body: new URLSearchParams({
+                UserName,
+                PasswordNbChar
+            }).toString()
+        });
+
+        const boomiResponse = await response.text();
+        res.status(response.status).send(boomiResponse);
+    } catch (error) {
+        console.error('Erreur lors de l’appel Boomi:', error);
+        res.status(500).json({ error: 'Erreur serveur Boomi' });
+    }
 }
